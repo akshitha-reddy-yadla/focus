@@ -1,15 +1,10 @@
-import 'package:curtail/features/main/main_screen.dart';
-import 'package:curtail/features/main/tabs/app_control/action_controller.dart';
-import 'package:curtail/features/main/tabs/main_controller.dart';
-import 'package:curtail/features/main/tabs/stats/stats_controller.dart';
+import 'package:curtail/features/main/home/home_controller.dart';
+import 'package:curtail/features/main/home/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 void main() {
-  Get.put(MainController());
-  Get.put(ActionController());
-  Get.put(StatsController());
+  Get.put(HomeController());
 
   runApp(const MyApp());
 }
@@ -20,12 +15,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Curtail',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown),
         useMaterial3: true,
       ),
-      home: const MainScreen(),
+      home: const HomeScreen(),
     );
   }
 }

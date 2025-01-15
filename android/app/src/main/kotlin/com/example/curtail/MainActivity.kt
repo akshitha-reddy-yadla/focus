@@ -1,96 +1,93 @@
-package com.example.curtail
-
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.Intent
 import android.os.Build
+import android.os.Bundle
+import android.util.Log
 import androidx.annotation.RequiresApi
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import android.provider.Settings
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
-
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.curtail.screenTime"
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private val CHANNEL = "com.example.curtail"
+
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
         MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger, CHANNEL
-        ).apply {
-            setMethodCallHandler { call, result ->
-                run {
-                    System.out.print(call.method)
-                    if (call.method.equals("getScreenTime")) {
-                        result.success(getScreenTime());
-                    } else {
-                        result.notImplemented();
-                    }
-                }
+            flutterEngine.dartExecutor.binaryMessenger,
+            CHANNEL
+        ).setMethodCallHandler { call, result ->
+            if (call.method == "getScreenTimeUsage") {
+                result.success(getStats())
+            } else {
+                result.notImplemented()
             }
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun getStats(): Map<String, String> {
+        val currentTime = System.currentTimeMillis()
 
-    private fun getScreenTime(): String {
-        // Check if UsageStatsManager is available (API level 21+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            // Use applicationContext.getSystemService to ensure context is valid
-            val usageStatsManager =
-                applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager?
+        val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy HH:mm:ss")
+        val localDate = LocalDate.now()   // your current date time
+        val startOfDay: LocalDateTime = localDate.atStartOfDay() // date time at start of the date
+        val startTime = startOfDay.atZone(ZoneId.systemDefault()).toInstant()
+            .toEpochMilli() // start time to timestamp
+        Log.d("Date:", "start date $startTime")
+        Log.d("Date:", "start date parsed ${startOfDay.format(dateFormatter)}")
 
-            if (usageStatsManager == null) return "0:0"
+        val timeOneHourAgo = currentTime - (60 * 60 * 1000)
 
-            val currentTime = System.currentTimeMillis()
-            // Convert milliseconds to Date
-            val date = Date(currentTime)
-            // Create a SimpleDateFormat with the desired format
-            val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val total = getScreenUsage(currentTime, startTime);
+        val lastHour = getScreenUsage(currentTime, timeOneHourAgo)
+        return mapOf(
+            "lastHour" to lastHour,
+            "total" to total
+        )
+    }
 
-            // Set the time zone to the default local time zone
-            format.timeZone = TimeZone.getDefault()
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun getScreenUsage(currentTime: Long, startTime: Long): String {
+       val usageStatsManager = applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-            val calendar = Calendar.getInstance()
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            val beginTime = calendar.timeInMillis // Start of today (midnight)
-            System.out.println(beginTime);
-            System.out.println("time");
-            System.out.println(currentTime);
-            val stats: List<UsageStats> = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY, beginTime, currentTime
-            )
 
-            var totalScreenTime: Long = 0
-            for (usageStats in stats) {
-                System.out.println(usageStats.totalTimeInForeground)
-                totalScreenTime += usageStats.totalTimeInForeground
-            }
+        val stats: List<UsageStats> = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY, startTime, currentTime
+        )
 
-            val hours =
-                (totalScreenTime / 3600000).toInt() // Convert milliseconds to hours (1 hour = 3,600,000 milliseconds)
-            val minutes = ((totalScreenTime % 3600000) / 60000).toInt()
+        var totalScreenTime: Long = 0
 
-            return "$hours : $minutes";
+        var hours = 0;
+        var minutes = 0;
+
+        for(usageStats in stats) {
+            totalScreenTime += usageStats.totalTimeInForeground
+
+             hours = (totalScreenTime / 3600000).toInt()
+             minutes = ((totalScreenTime % 3600000) / 60000).toInt()
+          }
+
+        return "${formatDigits(hours)}:${formatDigits(minutes)}";
+    }
+
+    private fun formatDigits(num: Int): String {
+        return if (abs(num).toString().trim().length == 2) {
+            num.toString()
         } else {
-            // For devices below API 21, return 0 or handle it accordingly
-            return "0:0"
+            "0$num"
         }
     }
 
-    // Method to open Usage Access Settings if needed (for Android versions 5.0 and above)
-    private fun openUsageSettings() {
-        // Use startActivity to open the Usage Access Settings
-        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-        startActivity(intent)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
     }
 }

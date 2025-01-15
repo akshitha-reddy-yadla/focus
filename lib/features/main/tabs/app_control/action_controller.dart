@@ -1,19 +1,17 @@
 import 'dart:async';
 
 import 'package:curtail/data/app_data.dart';
+import 'package:curtail/data/app_info.dart';
 import 'package:curtail/features/main/tabs/app_control/widgets/timer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:installed_apps/app_info.dart';
-import 'package:installed_apps/installed_apps.dart';
 
 class ActionController extends GetxController {
   final isLoading = true.obs;
 
   final installedApps = <AppData>[].obs;
-
-  // timer
+  // final updateList = <AppInfo>[].obs;
 
   final hours = 0.obs;
   final minutes = 0.obs;
@@ -23,7 +21,7 @@ class ActionController extends GetxController {
   void onInit() {
     super.onInit();
     getInstalledApps();
-    openUsageSettings();
+    // openUsageSettings();
   }
 
   @override
@@ -32,38 +30,61 @@ class ActionController extends GetxController {
     super.dispose();
   }
 
-  void openUsageSettings() {
-    const platform = MethodChannel('com.yourcompany.screenTime');
-    platform.invokeMethod('openUsageSettings');
-  }
+  // void openUsageSettings() {
+  //   const platform = MethodChannel('com.yourcompany.screenTime');
+  //   platform.invokeMethod('openUsageSettings');
+  // }
 
   getInstalledApps() async {
     isLoading(true);
-    List<AppInfo> apps = await InstalledApps.getInstalledApps(true, true);
-    List<AppData> formatedAppData = [];
+    try {
+      const MethodChannel channel = MethodChannel('installed_apps');
 
-    for (AppInfo app in apps) {
-      AppData appData = AppData(
-          id: app.name + app.packageName,
-          name: app.name,
-          icon: app.icon,
-          packageName: app.packageName,
-          versionName: app.versionName,
-          versionCode: app.versionCode,
-          builtWith: app.builtWith,
-          installedTimestamp: app.installedTimestamp,
-          isRestricted: false);
+      final List<Object?> usage = await channel.invokeMethod("installed_apps");
 
-      print(app.icon);
-      print("appData ${appData.toString()} ${appData.icon}");
+      List<Map<String, dynamic>> listOfinstalledApps =
+          usage.map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
-      formatedAppData.add(appData);
+      List<AppInfo> apps = [];
+
+      for (var i = 0; i < listOfinstalledApps.length; i++) {
+        AppInfo info = AppInfo.fromJson(listOfinstalledApps[i]);
+
+        apps.add(info);
+      }
+
+      List<AppData> formatedAppData = [];
+
+      for (AppInfo app in apps) {
+        AppData appData = AppData(
+            id: app.appName! + app.packageName!,
+            name: app.appName!,
+            icon: app.appLogo,
+            packageName: app.packageName!,
+            versionName: "",
+            versionCode: 0,
+            installedTimestamp: 0,
+            // versionName: app.versionName,
+            // versionCode: app.versionCode,
+            // builtWith: app.builtWith,
+            // installedTimestamp: app.installedTimestamp,
+            isRestricted: false);
+
+        print(app.appLogo);
+        print("appData ${appData.toString()} ${appData.icon}");
+
+        formatedAppData.add(appData);
+
+        installedApps(formatedAppData);
+      }
+    } on PlatformException catch (e) {
+      print(e);
     }
+    // List<AppInfo> apps = await InstalledApps.getInstalledApps(true, true);
 
-    installedApps(formatedAppData);
     isLoading(false);
 
-    print(apps);
+    // print(apps);
   }
 
   onToggle(String id) {
@@ -99,18 +120,24 @@ class ActionController extends GetxController {
     Get.back();
   }
 
-  var platform = const MethodChannel('com.curtail.kioskMode');
+  // static const platform = MethodChannel('com.curtail.screenTime');
 
-  Future<void> enableKioskMode() async {
-    try {
-      await platform.invokeMethod('enableKioskMode');
-    } on PlatformException catch (e) {
-      print("Failed to enable Kiosk mode: ${e.message}");
-    }
-  }
+  // Future<void> restrictApps(List<String> appPackageNames) async {
+  //   try {
+  //     await platform.invokeMethod('kioskModeLock', {'apps': appPackageNames});
+  //   } on PlatformException catch (e) {
+  //     print("Failed to restrict apps: '${e.message}'.");
+  //   }
+  // }
 
   onDone() {
-    enableKioskMode();
+    List<String> listOfAppsToRestrict = [];
+    for (var i = 0; i < installedApps.length; i++) {
+      if (installedApps[i].isRestricted) {
+        listOfAppsToRestrict.add(installedApps[i].packageName);
+      }
+    }
+    // restrictApps(listOfAppsToRestrict);
   }
 }
 

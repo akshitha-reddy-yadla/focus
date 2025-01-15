@@ -1,5 +1,3 @@
-import 'package:app_usage/app_usage.dart';
-import 'package:curtail/data/app_data.dart';
 import 'package:curtail/features/main/tabs/app_control/action_controller.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +5,8 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 class StatsController extends GetxController {
+  final homeController = Get.find();
+
   var data = <FlSpot>[].obs;
   // var icons = <Uint8List>[].obs;
   var icons = <String>[].obs;
@@ -63,51 +63,52 @@ class StatsController extends GetxController {
   void getUsageStats() async {
     data.value = <FlSpot>[];
     icons.value = <String>[];
-    try {
-      DateTime endDate = DateTime.now();
-      DateTime startDate = endDate.subtract(const Duration(hours: 1));
-      List<AppUsageInfo> infoList =
-          await AppUsage().getAppUsage(startDate, endDate);
+    homeController.getAppUsage();
+    // try {
+    //   DateTime endDate = DateTime.now();
+    //   DateTime startDate = endDate.subtract(const Duration(hours: 1));
+    //   List<AppUsageInfo> infoList =
+    //       await AppUsage().getAppUsage(startDate, endDate);
 
-      print(infoList);
-      print("@@");
-      print(infoList.length);
+    //   print(infoList);
+    //   print("@@");
+    //   print(infoList.length);
 
-      List<AppData> appData = appController.installedApps;
+    //   List<AppData> appData = appController.installedApps;
 
-      for (var i = 0; i < infoList.length; i++) {
-        if (infoList[i].usage.inHours.toDouble() + 1.2 > 0.1) {
-          FlSpot spot =
-              FlSpot(i.toDouble(), infoList[i].usage.inHours.toDouble() + 1.2);
-          print("data add");
+    //   for (var i = 0; i < infoList.length; i++) {
+    //     if (infoList[i].usage.inHours.toDouble() + 1.2 > 0.1) {
+    //       FlSpot spot =
+    //           FlSpot(i.toDouble(), infoList[i].usage.inHours.toDouble() + 1.2);
+    //       print("data add");
 
-          data.add(spot);
+    //       data.add(spot);
 
-          // for (AppData app in appData) {
-          //   print(app.name);
-          //   print("ME");
-          //   print(infoList[i].appName);
-          //   if (app.name == infoList[i].appName) {
-          //     // icons.add(app.icon!);
-          //     print("icons add");
-          //     icons.add(app.name);
-          //   }
-          // }
-        }
-      }
-      print(icons.length);
-      print("!!");
-      print(data.length);
+    //       // for (AppData app in appData) {
+    //       //   print(app.name);
+    //       //   print("ME");
+    //       //   print(infoList[i].appName);
+    //       //   if (app.name == infoList[i].appName) {
+    //       //     // icons.add(app.icon!);
+    //       //     print("icons add");
+    //       //     icons.add(app.name);
+    //       //   }
+    //       // }
+    //     }
+    //   }
+    //   print(icons.length);
+    //   print("!!");
+    //   print(data.length);
 
-      for (var i = 0; i < icons.length; i++) {
-        print(icons[i]);
-      }
+    //   for (var i = 0; i < icons.length; i++) {
+    //     print(icons[i]);
+    //   }
 
-      for (var i = 0; i < data.length; i++) {
-        print("Data" + data[i].toString());
-      }
-    } on AppUsageException catch (exception) {
-      print(exception);
-    }
+    //   for (var i = 0; i < data.length; i++) {
+    //     print("Data" + data[i].toString());
+    //   }
+    // } on AppUsageException catch (exception) {
+    //   print(exception);
+    // }
   }
 }

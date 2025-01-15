@@ -1,15 +1,13 @@
-import 'dart:typed_data';
-
-import 'package:installed_apps/app_info.dart';
+// import 'package:installed_apps/app_info.dart';
 
 class AppData {
   String id;
   String name;
-  Uint8List? icon;
+  String? icon;
   String packageName;
   String versionName;
   int versionCode;
-  BuiltWith builtWith;
+  // BuiltWith builtWith;
   int installedTimestamp;
   bool isRestricted;
 
@@ -20,7 +18,7 @@ class AppData {
       required this.packageName,
       required this.versionName,
       required this.versionCode,
-      required this.builtWith,
+      // required this.builtWith,
       required this.installedTimestamp,
       required this.isRestricted});
 
@@ -32,7 +30,7 @@ class AppData {
         packageName: data["package_name"],
         versionName: data["version_name"] ?? "1.0.0",
         versionCode: data["version_code"] ?? 1,
-        builtWith: parseBuiltWith(data["built_with"]),
+        // builtWith: parseBuiltWith(data["built_with"]),
         installedTimestamp: data["installed_timestamp"] ?? 0,
         isRestricted: data["is_restricted"] ?? false);
   }
@@ -42,7 +40,7 @@ class AppData {
   }
 
   String returnData() {
-    return "$name, $icon, $packageName, $versionName, $versionCode, $builtWith, $installedTimestamp";
+    return "$name, $icon, $packageName, $versionName, $versionCode, $installedTimestamp";
   }
 
   static List<AppData> parseList(dynamic apps) {
@@ -58,16 +56,16 @@ class AppData {
     return appInfoList;
   }
 
-  static BuiltWith parseBuiltWith(String? builtWithRaw) {
-    if (builtWithRaw == "flutter") {
-      return BuiltWith.flutter;
-    } else if (builtWithRaw == "react_native") {
-      return BuiltWith.react_native;
-    } else if (builtWithRaw == "xamarin") {
-      return BuiltWith.xamarin;
-    } else if (builtWithRaw == "ionic") {
-      return BuiltWith.ionic;
-    }
-    return BuiltWith.native_or_others;
-  }
+  // static BuiltWith parseBuiltWith(String? builtWithRaw) {
+  //   if (builtWithRaw == "flutter") {
+  //     return BuiltWith.flutter;
+  //   } else if (builtWithRaw == "react_native") {
+  //     return BuiltWith.react_native;
+  //   } else if (builtWithRaw == "xamarin") {
+  //     return BuiltWith.xamarin;
+  //   } else if (builtWithRaw == "ionic") {
+  //     return BuiltWith.ionic;
+  //   }
+  //   return BuiltWith.native_or_others;
+  // }
 }

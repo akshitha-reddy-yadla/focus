@@ -65,7 +65,9 @@ class TimerScreen extends GetView<ActionController> {
               const SizedBox(height: 20),
 
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Get.back();
+                },
                 child: const Text("Done"),
               ),
               const SizedBox(height: 10),

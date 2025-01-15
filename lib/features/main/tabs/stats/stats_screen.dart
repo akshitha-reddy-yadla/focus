@@ -8,40 +8,46 @@ class StatsScreen extends GetView<StatsController> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Text("stats"),
-        Row(
-          children: [
-            const Text("SCREEN TIME"),
-            Container(
-              child: Obx(() {
-                return Text(controller.date.value);
+    return Scaffold(
+      appBar: AppBar(),
+      body: SafeArea(
+        child: Container(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  const Text("SCREEN TIME"),
+                  Container(
+                    child: Obx(() {
+                      return Text(controller.date.value);
+                    }),
+                  )
+                ],
+              ),
+              // SplineChartDemo(),
+              Obx(() {
+                print(controller.data.length);
+                print("^^");
+                print(controller.icons.length);
+                return controller.data.isEmpty
+                    ? const CircularProgressIndicator()
+                    : LineChartSample2(
+                        spots: controller.data,
+                        icons: controller.icons,
+                      );
               }),
-            )
-          ],
+              ElevatedButton(
+                onPressed: () {
+                  controller.getScreenTime();
+                },
+                child: const Text("get stats"),
+              ),
+            ],
+          ),
         ),
-        // SplineChartDemo(),
-        Obx(() {
-          print(controller.data.length);
-          print("^^");
-          print(controller.icons.length);
-          return controller.data.isEmpty
-              ? const CircularProgressIndicator()
-              : LineChartSample2(
-                  spots: controller.data,
-                  icons: controller.icons,
-                );
-        }),
-        ElevatedButton(
-          onPressed: () {
-            controller.getScreenTime();
-          },
-          child: const Text("get stats"),
-        ),
-      ],
+      ),
     );
   }
 }

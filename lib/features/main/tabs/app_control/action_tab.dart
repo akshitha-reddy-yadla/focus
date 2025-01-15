@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:curtail/features/main/tabs/app_control/action_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -8,8 +10,7 @@ class ActionTab extends GetView<ActionController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-          child: Container(
+      body: Container(
         padding: const EdgeInsets.all(16.0),
         width: MediaQuery.sizeOf(context).width,
         height: MediaQuery.sizeOf(context).height,
@@ -47,8 +48,8 @@ class ActionTab extends GetView<ActionController> {
                                               null &&
                                           controller.installedApps[index].icon!
                                               .isNotEmpty
-                                      ? Image.memory(
-                                          controller.installedApps[index].icon!)
+                                      ? Image.memory(base64Decode(controller
+                                          .installedApps[index].icon!))
                                       : Container(),
                                 ),
                               ),
@@ -102,7 +103,7 @@ class ActionTab extends GetView<ActionController> {
             ),
           ],
         ),
-      )),
+      ),
     );
   }
 }

@@ -18,7 +18,8 @@ class SplashController extends GetxController {
     if (permissions) {
       print("navigate");
       Get.put(HomeController());
-      Get.to(HomeScreen());
+      await Get.to(const HomeScreen());
+      // Get.to(HomeScreen());
     } else {
       print("error");
       // TODO: // ERROR SCREEN

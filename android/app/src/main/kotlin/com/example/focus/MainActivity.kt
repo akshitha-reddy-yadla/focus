@@ -2,17 +2,20 @@ package com.example.focus
 
 import android.Manifest
 import android.app.AppOpsManager
-import android.app.AppOpsManager.MODE_ALLOWED
-import android.app.AppOpsManager.OPSTR_GET_USAGE_STATS
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
+import android.icu.text.SimpleDateFormat
+import android.icu.util.TimeZone
 import android.os.Build
 import android.os.Bundle
-import android.os.Process.myUid
 import android.provider.Settings
+import android.util.Base64
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
@@ -20,17 +23,16 @@ import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
+import java.sql.Date
+import java.time.Duration
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
+import java.time.ZonedDateTime
 import kotlin.math.abs
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 
-class MainActivity: FlutterActivity() {
+class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.focus"
     private val REQUEST_CODE = 101  // Define your request code
 
@@ -38,20 +40,18 @@ class MainActivity: FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            CHANNEL
+            flutterEngine.dartExecutor.binaryMessenger, CHANNEL
         ).setMethodCallHandler { call, result ->
             if (call.method == "checkPermission") {
                 val hasPermission = isUsageStatsPermissionGranted();
-                if(hasPermission) {
+                if (hasPermission) {
                     result.success(hasPermission)
-                }else {
-                    startActivity( Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+                } else {
+                    startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
                 }
-            } else if(call.method == "grantPermission") {
-                result.success(startActivity( Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)))
-            }
-            else if (call.method == "getScreenTimeUsage") {
+            } else if (call.method == "grantPermission") {
+                result.success(startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)))
+            } else if (call.method == "getScreenTimeUsage") {
                 result.success(getStats())
             } else {
                 result.notImplemented()
@@ -60,49 +60,73 @@ class MainActivity: FlutterActivity() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun getStats(): Map<String, String> {
+    private fun getStats(): Map<String, Any> {
+
+        return getScreenUsage();
 
 
-        val currentTime = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli()
+//        val currentTime =
+//            LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+//
+//        val startTime = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+//            .toEpochMilli() // start time to timestamp
+//        Log.d("Date:", "start date $startTime")
+//        Log.d("Date:", "current date $currentTime")
+//        Log.d(
+//            "Date:",
+//            "start date parsed ${currentTime.toDuration(DurationUnit.HOURS)} ${
+//                currentTime.toDuration(DurationUnit.MINUTES)
+//            } ${
+//                currentTime.toDuration(
+//                    kotlin.time.DurationUnit.DAYS
+//                )
+//            }}"
+//        )
+////        Log.d("Date:", "start date parsed ${startOfDay.format(dateFormatter)}")
+//
+//        Log.d("Zone:", "start date parsed ${ZoneId.systemDefault()}")
 
-        val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy HH:mm:ss")
-        val localDate = LocalDate.now()   // your current date time
-        val startOfDay: LocalDateTime = localDate.atStartOfDay() // date time at start of the date
-        val startTime = startOfDay.atZone(ZoneId.systemDefault()).toInstant()
-            .toEpochMilli() // start time to timestamp
-        Log.d("Date:", "start date $startTime")
-        Log.d("Date:", "current date $currentTime")
-        Log.d("Date:", "start date parsed ${currentTime.toDuration(DurationUnit.HOURS)} ${currentTime.toDuration(DurationUnit.MINUTES)} ${currentTime.toDuration(
-            kotlin.time.DurationUnit.DAYS)}}")
-        Log.d("Date:", "start date parsed ${startOfDay.format(dateFormatter)}")
 
-
-        val timeOneHourAgo = currentTime - (60 * 60 * 1000);
-
-        Log.d("time", "${startTime}");
-        Log.d("time", "${LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli()}");
-        Log.d("time", "${LocalDateTime.now().minusHours(1).toInstant(ZoneOffset.UTC).toEpochMilli()}");
-
-        val oneHourAgo = System.currentTimeMillis() - 60 * 60 * 1000;
-
-        val total = getScreenUsage(startTime, currentTime, 0);
-        val lastHour = getScreenUsage( oneHourAgo, System.currentTimeMillis(), 0)
+//        val timeOneHourAgo = currentTime - (60 * 60 * 1000);
+//
+//        Log.d("time", "${startTime}");
+//        Log.d("time", "${currentTime}");
+//        Log.d(
+//            "time",
+//            "${
+//                LocalDateTime.now().minusHours(1).atZone(ZoneId.systemDefault()).toInstant()
+//                    .toEpochMilli()
+//            }"
+//        );
+//        Log.d(
+//            "time",
+//            "${LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()}"
+//        );
+//
+//        val oneHourAgo = System.currentTimeMillis() or -TimeUnit.HOURS.toMillis(1)
+//
+////        val total = getScreenUsage(startTime, currentTime, 0);
+//        val lastHour = getScreenUsage(
+//            oneHourAgo,
+//            System.currentTimeMillis(), 0
+//        )
 //        val lastHour = getScreenUsage(LocalDateTime.now().minusHours(1).toInstant(ZoneOffset.UTC).toEpochMilli(), currentTime);
-        return mapOf(
-            "lastHour" to lastHour,
-            "total" to total
-        )
+//        return mapOf(
+//            "lastHour" to lastHour,
+////            "total" to total
+//        )
     }
 
     private fun requestPackagePermission() {
         System.out.println("check for permissions");
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.PACKAGE_USAGE_STATS) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                this, Manifest.permission.PACKAGE_USAGE_STATS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             // If not granted, request the LOCATION permission
             ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.PACKAGE_USAGE_STATS),
-                REQUEST_CODE
+                this, arrayOf(Manifest.permission.PACKAGE_USAGE_STATS), REQUEST_CODE
             )
         } else {
             // If already granted, log it
@@ -143,7 +167,9 @@ class MainActivity: FlutterActivity() {
     }
 
     // Handle the result of permission request
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         System.out.println("on request permission s request");
@@ -162,18 +188,20 @@ class MainActivity: FlutterActivity() {
         }
     }
 
-    private fun isUsageStatsPermissionGranted() : Boolean {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+    private fun isUsageStatsPermissionGranted(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
             val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
 
             val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 // For Android 6.0 (API 23) and above, use checkOpNoThrow()
-                appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
-                    android.os.Process.myUid(), packageName)
+                appOps.checkOpNoThrow(
+                    AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName
+                )
             } else {
                 // For older versions, use the deprecated checkOp()
-                appOps.checkOp(AppOpsManager.OPSTR_GET_USAGE_STATS,
-                    android.os.Process.myUid(), packageName)
+                appOps.checkOp(
+                    AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName
+                )
             }
             return mode == AppOpsManager.MODE_ALLOWED
         }
@@ -181,40 +209,147 @@ class MainActivity: FlutterActivity() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun getScreenUsage(startTime: Long, currentTime: Long, totalScreenTime: Long): String {
+    private fun getScreenUsage(): Map<String, Any> {
         System.out.println("NOt granted 0 ");
 
-        var screenTime = totalScreenTime;
+//        var screenTime = totalScreenTime;
 
-        val usageStatsManager = applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val usageStatsManager =
+            applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-        val stats: List<UsageStats> = usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY, startTime, currentTime
-        )
-        Log.d("stats", stats.toString())
+//        val stats: List<UsageStats> = usageStatsManager.queryUsageStats(
+//            UsageStatsManager.INTERVAL_DAILY, startTime, currentTime
+//        )
 
-        Log.d("screen time", screenTime.toString());
-
-        var hours = 0;
-        var minutes = 0;
-
-        for (usageStats in stats) {
-            Log.d("stats1", usageStats.toString())
-            Log.d("App Usage", "${usageStats.packageName}: ${usageStats.totalTimeInForeground}")
+//        for (usageStats in stats) {
+////            Log.d("stats1 ", usageStats.toString())
+//            Log.d("screenTime ", "${usageStats.packageName} sdf ${screenTime.toString()}")
+//
 //            screenTime += usageStats.totalTimeInForeground
+//        }
+
+//        System.out.println("${formatDigits((screenTime / 3600000).toInt())}:${formatDigits(((screenTime % 3600000) / 60000).toInt())}");
+
+        println("time print");
+//        System.out.println(convertMillisToHoursMinutes(screenTime));
+
+        val appList: List<UsageStats> = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            System.currentTimeMillis() - 1000 * 3600 * 24,
+            System.currentTimeMillis()
+        )
+
+        val currentTime = System.currentTimeMillis()
+
+
+        // Subtract one hour (3600 seconds * 1000 milliseconds)
+        val oneHourAgo = currentTime - 1000 * 3600
+
+
+        // Format the times as UTC date
+        val sdf: SimpleDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"))
+
+        System.out.println("Current time (UTC): " + sdf.format(Date(currentTime)))
+        System.out.println("One hour ago (UTC): " + sdf.format(Date(oneHourAgo)))
+
+
+        // Verify if the difference is exactly one hour (3600000 milliseconds)
+        println("Difference (milliseconds): " + (currentTime - oneHourAgo))
+
+
+        val appListForLastOneHour: List<UsageStats> = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_BEST,
+            System.currentTimeMillis() - 1000 * 3600,
+            System.currentTimeMillis()
+        )
+
+
+//        val mySortedMap: SortedMap<Long, UsageStats> = sortedMapOf()
+
+        val statsMap: MutableMap<String, Any> = HashMap()
+
+        var totalTime: Long = 0;
+        var timeUsedInLastOneHour: Long = 0;
+
+        val packageManager = context.packageManager
+
+
+        if (!appList.isNullOrEmpty()) {
+
+            for (usageStats in appList) {
+
+                var appIcon: Drawable?
+                try {
+                    appIcon = packageManager.getApplicationIcon(usageStats.packageName)
+                } catch (e: PackageManager.NameNotFoundException) {
+                    e.printStackTrace()
+                    appIcon = null // Handle the exception
+                }
+
+                var iconBitmap: Bitmap? = null
+                if (appIcon != null) {
+                    iconBitmap = drawableToBitmap(appIcon)
+                }
+
+
+// Convert Bitmap to Base64 string
+                var base64Icon: String? = null
+                if (iconBitmap != null) {
+                    base64Icon = bitmapToBase64(iconBitmap)
+                }
+
+                var appName: String? = null
+                try {
+                    val appInfo = packageManager.getApplicationInfo(packageName, 0)
+                    appName = packageManager.getApplicationLabel(appInfo).toString()
+                } catch (e: PackageManager.NameNotFoundException) {
+                    e.printStackTrace()
+                    appName = null // Handle the exception if the package name is not found
+                }
+
+
+                statsMap["totalTimeInForeground"] = usageStats.totalTimeInForeground
+                statsMap["packageName"] = usageStats.packageName
+                statsMap["appIcon"] = base64Icon ?: ""
+                statsMap["appName"] = appName ?: ""
+
+                totalTime += usageStats.totalTimeInForeground;
+            }
+            println("sd");
+            System.out.println(totalTime);
+//            System.out.println(mySortedMap.toString());
         }
 
-        for(usageStats in stats) {
-            Log.d("stats1 ", usageStats.toString())
-            screenTime += usageStats.totalTimeInForeground
+        if (!appListForLastOneHour.isNullOrEmpty()) {
+            for (usageStats in appListForLastOneHour) {
+                timeUsedInLastOneHour += usageStats.totalTimeInForeground;
+            }
         }
+        println("sd1");
+        System.out.println(timeUsedInLastOneHour);
+        System.out.println(System.currentTimeMillis() - 1000 * 3600);
+        System.out.println(System.currentTimeMillis());
 
-        hours = (screenTime / 3600000).toInt()
-        minutes = ((screenTime % 3600000) / 60000).toInt()
+        val start = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val end = ZonedDateTime.now().toInstant().toEpochMilli()
 
-        System.out.println("${formatDigits(hours)}:${formatDigits(minutes)}");
+        val oneHour = ZonedDateTime.now().minusHours(1).toInstant().toEpochMilli();
 
-        return "${formatDigits((screenTime / 3600000).toInt())}:${formatDigits(((screenTime % 3600000) / 60000).toInt())}";
+        val stats = usageStatsManager.queryAndAggregateUsageStats(start, end)
+
+        val total = Duration.ofMillis(stats.values.map { it.totalTimeInForeground }.sum())
+        println("YOU SPENT ${total.toHours()} mins.");
+
+        val hourStats = usageStatsManager.queryAndAggregateUsageStats(oneHour, end);
+        println("YOU SPENT ${Duration.ofMillis(hourStats.values.map { it.totalTimeInForeground }.sum()).toHours()} mins.");
+
+
+        return mapOf(
+            "lastHour" to convertMillisToHoursMinutes(timeUsedInLastOneHour),
+            "total" to convertMillisToHoursMinutes(totalTime),
+            "stats" to statsMap
+        )
 
     }
 
@@ -231,6 +366,29 @@ class MainActivity: FlutterActivity() {
             "0$num"
         }
     }
+
+//    ltMap.put("iconBase64", base64Icon);
+//    result.success(resultMap);
+
+    // Helper method to convert Drawable to Bitmap
+    private fun drawableToBitmap(drawable: Drawable): Bitmap {
+        var bitmap: Bitmap = Bitmap.createBitmap(
+            drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888
+        );
+        var canvas: Canvas = Canvas(bitmap);
+        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+        return bitmap;
+    }
+
+    // Helper method to convert Bitmap to Base64
+    private fun bitmapToBase64(bitmap: Bitmap): String {
+        var byteArrayOutputStream: ByteArrayOutputStream = ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+        val byteArray: ByteArray = byteArrayOutputStream.toByteArray()
+        return Base64.encodeToString(byteArray, Base64.DEFAULT);
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

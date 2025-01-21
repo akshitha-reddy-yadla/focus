@@ -28,7 +28,12 @@ import kotlin.math.abs
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.focus"
-    private val REQUEST_CODE = 101
+    private val REQUEST_CODE = 1001
+    private val BLOCKED_APPS_KEY = "blocked_apps"
+    private var blockedPackages: List<String> = ArrayList()
+
+    var appReceiver: BlockedAppReceiver = BlockedAppReceiver()
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -50,10 +55,43 @@ class MainActivity : FlutterActivity() {
                 result.success(getStats())
             } else if (call.method == "getAppUsage") {
                 result.success(getAppUsage())
+            } else if (call.method == "blockAccess") {
+                blockedPackages = call.argument("packages")!!
+
+                val intent = Intent(this, BlockedAppReceiver::class.java)
+                sendBroadcast(intent)
+            } else if (call.method.equals("unblockApps")) {
+//                blockedPackages.clear();
             } else {
                 result.notImplemented()
             }
         }
+    }
+
+    // Save the list of blocked apps to SharedPreferences
+    private fun saveBlockedApps(blockedPackages: List<String>) {
+        val sharedPreferences = getSharedPreferences("AppBlockerPrefs", MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+
+        // Convert List to Set for SharedPreferences compatibility
+        val blockedAppsSet = HashSet(blockedPackages)  // Using HashSet to convert List to Set
+    }
+
+
+    // Clear the list of blocked apps from SharedPreferences
+    private fun clearBlockedApps() {
+        val sharedPreferences = getSharedPreferences("AppBlockerPrefs", MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.remove(BLOCKED_APPS_KEY)
+        editor.apply()
+    }
+
+    // Start monitoring app launches for blocked apps
+    private fun startMonitoringBlockedApps() {
+        // Register BroadcastReceiver to monitor all app launches
+        val intent = Intent(this, BlockedAppReceiver::class.java)
+        intent.setAction("com.example.MONITOR_APPS")
+        sendBroadcast(intent)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -69,7 +107,6 @@ class MainActivity : FlutterActivity() {
                 this, Manifest.permission.PACKAGE_USAGE_STATS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            // If not granted, request the LOCATION permission
             ActivityCompat.requestPermissions(
                 this, arrayOf(Manifest.permission.PACKAGE_USAGE_STATS), REQUEST_CODE
             )
@@ -77,41 +114,8 @@ class MainActivity : FlutterActivity() {
             // If already granted, log it
             Log.d("Permissions", "LOCATION permission already granted")
         }
-        // Define permissions to request
-//        val permissionsToRequest = arrayOf(
-//            Manifest.permission.PACKAGE_USAGE_STATS,
-//        )
-//
-//        // Check if any of the permissions are already granted
-//        val permissionsNeeded = permissionsToRequest.filter {
-//            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-//        }
-//
-//        if (permissionsNeeded.isNotEmpty()) {
-//            ActivityCompat.requestPermissions(
-//                this,
-//                permissionsNeeded.toTypedArray(),
-//                REQUEST_CODE
-//            )
-//        } else {
-//            // Permissions already granted, proceed with logic
-//            Log.d("Permissions", "All requested permissions are already granted")
-//        }
-//        if (ContextCompat.checkSelfPermission(this.activity, Manifest.permission.PACKAGE_USAGE_STATS)
-//            != PackageManager.PERMISSION_GRANTED) {
-//            ActivityCompat.requestPermissions(this.activity,
-//                arrayOf(Manifest.permission.PACKAGE_USAGE_STATS),
-//                REQUEST_CODE
-//                );
-//            // Permission is not granted
-//            Log.d("permission", "permission not granted")
-//        }else {
-//            Log.d("permission", "permission  granted")
-//        }
-
     }
 
-    // Handle the result of permission request
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
@@ -129,7 +133,6 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    // In your Platform Channel handler
     fun getAppIconBase64(packageName: String): String? {
         return try {
             val appIcon: Drawable = packageManager.getApplicationIcon(packageName)
@@ -208,12 +211,10 @@ class MainActivity : FlutterActivity() {
 
     private fun isAppInstalled(context: Context, packageName: String): Boolean {
         return try {
-            // Try to get package info for the specified package name
             context.packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
-            true  // App is installed
+            true
         } catch (e: PackageManager.NameNotFoundException) {
-            // The app is not installed, handle the exception gracefully
-            false  // App is not installed
+            false
         }
     }
 
@@ -223,12 +224,10 @@ class MainActivity : FlutterActivity() {
             val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
 
             val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                // For Android 6.0 (API 23) and above, use checkOpNoThrow()
                 appOps.checkOpNoThrow(
                     AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName
                 )
             } else {
-                // For older versions, use the deprecated checkOp()
                 appOps.checkOp(
                     AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName
                 )
@@ -306,10 +305,6 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-//    ltMap.put("iconBase64", base64Icon);
-//    result.success(resultMap);
-
-    // Function to convert Drawable to Bitmap
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
         val bitmap = Bitmap.createBitmap(
             drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888
@@ -320,7 +315,6 @@ class MainActivity : FlutterActivity() {
         return bitmap
     }
 
-    // Function to convert Bitmap to Base64 string
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val byteArrayOutputStream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
@@ -329,7 +323,57 @@ class MainActivity : FlutterActivity() {
     }
 
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun checkAndBlockAppUsage(
+        blockedPackages: List<String>?,
+        result: MethodChannel.Result
+    ) {
+        val usm = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
+        val currentTime = System.currentTimeMillis()
+
+
+        // Get usage stats for the last 10 seconds
+        val stats = usm.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            currentTime - 1000 * 10000,
+            currentTime
+        )
+
+        if (stats != null && !stats.isEmpty()) {
+            // Find the most recently used app
+            var lastUsageStats: UsageStats? = null
+            var lastTimeUsed: Long = 0
+
+            for (usageStats in stats) {
+                if (usageStats.lastTimeUsed > lastTimeUsed) {
+                    lastUsageStats = usageStats
+                    lastTimeUsed = usageStats.lastTimeUsed
+                }
+            }
+
+            if (lastUsageStats != null) {
+                val currentPackage = lastUsageStats.packageName
+                Log.d("AppBlocker", "Current package: $currentPackage")
+
+                System.out.println(blockedPackages.toString());
+
+                if (blockedPackages != null && blockedPackages.contains(currentPackage)) {
+                    // If the app being used is blocked, return "Blocked"
+                    result.success("Blocked")
+                } else {
+                    result.success("Allowed")
+                }
+            } else {
+                result.success("No Usage")
+            }
+        } else {
+            result.success("No Usage")
+        }
     }
 }

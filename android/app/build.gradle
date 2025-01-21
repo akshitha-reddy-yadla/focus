@@ -24,8 +24,8 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.focus"
-    compileSdk flutter.compileSdkVersion
-    ndkVersion flutter.ndkVersion
+    compileSdk 35
+    ndkVersion "26.1.10909125"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -45,7 +45,7 @@ android {
         applicationId "com.example.focus"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion 21
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -58,10 +58,20 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+    buildFeatures {
+        viewBinding true
+        buildConfig true
+    }
+
 }
 
 flutter {
     source '../..'
 }
 
-dependencies {}
+dependencies {
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.activity:activity-compose:1.4.0'
+    implementation "androidx.activity:activity-ktx:1.10.0"
+    implementation 'androidx.compose.material3:material3-android:1.3.1'
+}

@@ -46,7 +46,10 @@ class PopUpScreen extends GetView<PopUpController> {
             Align(
               alignment: Alignment.bottomCenter,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  print("Clicked");
+                  controller.onContinue();
+                },
                 child: const Text(
                   'Block selected apps',
                 ),
